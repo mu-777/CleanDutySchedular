@@ -1,0 +1,41 @@
+function executeCalendarScheduling(){
+  // ランダムで表作ってから手で変えることも考えて，再度データ読み込む
+  // 最初にspreadSheetから静的に呼ぶものはここでまとめて読み込んでおく
+  var spreadSheet = SpreadsheetApp.getActiveSpreadsheet(),
+      mainRange = spreadSheet.getSheetByName('Sheet1').getDataRange(),
+      nameRange = spreadSheet.getSheetByName('Sheet2').getDataRange(),
+      nameDict = getNameDictWithDates(getNameDict(nameRange.getValues()), mainRange.getCell(4, 4)),
+      dateDict = getDateDict(nameDict);
+  
+  // e.g.
+  // dateDict = {
+  //     (日にちの数値): {date: [担当日のDate型], names: ['松野', '福島', ...](=担当者)},
+  //     ...
+  // }
+  function getDateDict(nameDict){
+    var retDateDict = {};
+    Object.keys(nameDict).forEach(function(key, idx, keys){
+      nameDict[key].date.forEach(function(date, idx, dates){
+        if(retDateDict[date.getDate()] == null){// undefine or null 
+          retDateDict[date.getDate()] = {date: date, names:[nameDict[key].name]};
+        } else {
+          retDateDict[date.getDate()].names.push(nameDict[key].name);
+        }
+      });
+    });
+    return retDateDict;
+  }
+  setSchedule(dateDict);
+  Browser.msgBox("カレンダーに予定を立てました！");  
+}
+
+
+function setSchedule(dateDict){
+  var calendar = CalendarApp.getCalendarById(matsunoLabCalendarID),
+      date = {};
+  Object.keys(dateDict).forEach(function(key, idx, keys){
+    calendar.createAllDayEvent('[掃除当番] ' + dateDict[key].names.join(", "), 
+                               new Date(dateDict[key].date.getTime() - 24*60*60*1000)); // 世界標準時とスプレッドシートの表示形式の兼ね合い(これは根本的な解決策ではない)
+    Utilities.sleep(1000); // 間隔空けないとうまくうごかない(？)
+  });
+}
